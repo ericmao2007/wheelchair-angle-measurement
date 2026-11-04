@@ -1,0 +1,9 @@
+{
+  "schema": "STATIC2",
+  "created": 1792164248.17344,
+  "simulated": false,
+  "angle_units": "degrees",
+  "acceleration_units": "m/s2",
+  "gyro_units": "deg/s",
+  "note": "No absolute accuracy claim; placement IDs are automatic stability episodes; marks identify fixture returns."
+}

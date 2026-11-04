@@ -1,0 +1,12 @@
+BNO086 init=1 address=0x4B mode=STATIC2:ACCGYRO:FUSION6:BNO086:SH2 units=m/s2,deg/s NVS-six-face=1
+STATIC t=1239 ok=0 state=0 norm=nan noise=nan drift=nan roll=nan pitch=nan slope=nan temp=-128 status=0 error=1
+STATIC t=2252 ok=1 state=2 norm=9.8548 noise=nan drift=nan roll=-0.0358 pitch=1.8885 slope=1.8888 temp=-128 status=59 error=0
+STATIC t=3263 ok=1 state=2 norm=9.8000 noise=nan drift=nan roll=-0.0498 pitch=1.9024 slope=1.9031 temp=-128 status=59 error=0
+STATIC t=4269 ok=1 state=2 norm=9.7275 noise=nan drift=nan roll=-0.0218 pitch=1.9024 slope=1.9026 temp=-128 status=59 error=0
+STATIC t=5275 ok=1 state=3 norm=9.8357 noise=nan drift=nan roll=-0.0219 pitch=1.9024 slope=1.9026 temp=-128 status=59 error=0
+STATIC t=6277 ok=1 state=2 norm=9.8046 noise=nan drift=nan roll=-0.0359 pitch=1.9024 slope=1.9028 temp=-128 status=59 error=0
+STATIC t=7295 ok=1 state=2 norm=9.8240 noise=nan drift=nan roll=-0.0358 pitch=1.8954 slope=1.8958 temp=-128 status=59 error=0
+STATIC t=8329 ok=1 state=3 norm=9.8243 noise=nan drift=nan roll=-0.0497 pitch=1.8954 slope=1.8961 temp=-128 status=59 error=0
+STATIC t=9346 ok=1 state=2 norm=9.8199 noise=nan drift=nan roll=-0.0565 pitch=1.8815 slope=1.8823 temp=-128 status=59 error=0
+STATIC t=10355 ok=1 state=3 norm=9.8133 noise=nan drift=nan roll=-0.0286 pitch=1.8885 slope=1.8887 temp=-128 status=59 error=0
+STATIC t=11385 ok=1 state=3 norm=9.8208 noise=nan drift=nan roll=-0.0286 pitch=1.8885 slope=1.8887 temp=-128 status=59 error=0

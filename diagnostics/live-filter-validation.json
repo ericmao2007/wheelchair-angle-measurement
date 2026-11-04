@@ -1,0 +1,15 @@
+{
+  "synthetic": {
+    "noise_sd_ratio": 0.30120858175734794,
+    "synthetic_noise_reduction_percent": 69.8791418242652,
+    "step_30deg_settle_s": 0.1,
+    "slow_ramp_final_deg": 0.9263771202670871
+  },
+  "hardware_replay": {
+    "samples": 269,
+    "duration_s": 31.523000000000025,
+    "raw_pitch_sd_deg": 0.08264116539126437,
+    "smoothed_pitch_sd_deg": 0.014600820844842564,
+    "note": "Replay of an automatically stable hardware segment, not a controlled accuracy or drift test."
+  }
+}

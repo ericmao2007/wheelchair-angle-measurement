@@ -1,0 +1,23 @@
+const assert=require('node:assert/strict');
+const {StableCapture,freshFix,differentPoint,distance}=require('../app/src/main/assets/tracking.js');
+function windowSamples(fn,end=5000){const c=new StableCapture();let r;for(let t=0;t<=end;t+=100)r=c.update(fn(t),t,'absolute');return r;}
+assert(windowSamples(t=>({pitch:t===0?5:5+(t%200?-.2:.2),roll:2})), '±0.2° noise accepted');
+assert.equal(windowSamples(t=>({pitch:5+(t%200?-.21:.21),roll:2})),null,'>±0.2° rejected');
+assert.equal(windowSamples(t=>({pitch:5,roll:t%200?-.3:.3})),null,'Both axes must be stable');
+assert.equal(windowSamples(()=>({pitch:1,roll:1}),4900),null,'Full 5 seconds required');
+assert.equal(windowSamples(t=>({pitch:t/1000,roll:0})),null,'Slow angular motion rejected');
+const c=new StableCapture();for(let t=0;t<=5000;t+=100)c.update({pitch:1,roll:1},t,'a');
+assert.equal(c.update({pitch:1,roll:1},5100,'b'),null,'Reference resets duration');
+assert.equal(c.update({pitch:1,roll:1},7000,'b'),null,'Stream gap resets duration');
+assert.equal(c.update({pitch:NaN,roll:1},7100,'b'),null,'Invalid values reset');
+const fix={latitude:36,longitude:-79,accuracy:5,ageMs:0,receivedAt:0};
+assert(freshFix(fix,10000));assert(!freshFix(fix,10001));
+assert(!freshFix({...fix,accuracy:21},0));assert(!freshFix({...fix,ageMs:11000},0));
+assert(!freshFix({...fix,latitude:91},0));assert(!freshFix(null,0));
+const p={...fix,pitch:1,roll:2,referenceId:'a'};
+assert(!differentPoint(p,{...p,latitude:p.latitude+.00001,pitch:1.1}),'GPS drift does not duplicate');
+assert(differentPoint(p,{...p,latitude:p.latitude+.001}),'New location accepted');
+assert(differentPoint(p,{...p,pitch:1.6}),'New gradient accepted');
+assert(differentPoint(p,{...p,referenceId:'b'}),'Reference tracked');
+assert(distance(p,{...p,latitude:36.001})>110);
+console.log('Stability/GPS: threshold, noise, both axes, duration, motion, gaps, reference, invalid/stale/imprecise fixes, spatial/angle dedup passed.');

@@ -1,0 +1,215 @@
+{
+  "total_rows": 281,
+  "stable_rows": 281,
+  "sensor_modes": [
+    "1"
+  ],
+  "saved_calibration_rows": 0,
+  "duration_s": 29.545996624976397,
+  "angle_units": "degrees",
+  "absolute_error": "NOT MEASURED: requires independent angle reference",
+  "notes": [
+    "Only compare marked returns on the same fixture and direction.",
+    "Roll uses circular mean and wrapped deviations; do not combine different fixture orientations.",
+    "Temperature is the BNO055 internal reading, not calibrated ambient temperature.",
+    "Static-bin drift is meaningful only if the device remained on the same unchanged fixture."
+  ],
+  "overall": {
+    "pitch": {
+      "n": 281,
+      "mean": 74.54390553647514,
+      "min": 74.53034210205078,
+      "max": 74.55641174316406,
+      "peak_to_peak": 0.02606964111328125,
+      "stdev": 0.004415284272753654,
+      "max_abs_deviation_from_mean": 0.013563434424355592
+    },
+    "slope": {
+      "n": 281,
+      "mean": 74.59047544214648,
+      "min": 74.57644653320312,
+      "max": 74.602783203125,
+      "peak_to_peak": 0.026336669921875,
+      "stdev": 0.004407357473082478,
+      "max_abs_deviation_from_mean": 0.014028908943359397
+    },
+    "temperature": {
+      "n": 281,
+      "mean": 23.409252669039144,
+      "min": 23.0,
+      "max": 24.0,
+      "peak_to_peak": 1.0,
+      "stdev": 0.4916959649249536,
+      "max_abs_deviation_from_mean": 0.5907473309608555
+    },
+    "magnitude": {
+      "n": 281,
+      "mean": 10.043028471732903,
+      "min": 9.976902961730957,
+      "max": 10.078125,
+      "peak_to_peak": 0.10122203826904297,
+      "stdev": 0.010116346216877457,
+      "max_abs_deviation_from_mean": 0.066125510001946
+    },
+    "noise": {
+      "n": 281,
+      "mean": 0.018113310534997554,
+      "min": 0.014595639891922474,
+      "max": 0.030164776369929314,
+      "peak_to_peak": 0.01556913647800684,
+      "stdev": 0.004118327723807888,
+      "max_abs_deviation_from_mean": 0.01205146583493176
+    },
+    "drift": {
+      "n": 281,
+      "mean": 0.013434107617551322,
+      "min": 0.0,
+      "max": 0.044234659522771835,
+      "peak_to_peak": 0.044234659522771835,
+      "stdev": 0.013883840025133029,
+      "max_abs_deviation_from_mean": 0.030800551905220512
+    },
+    "recovery_s": null,
+    "roll": {
+      "n": 281,
+      "circular_mean": -4.394482223867285,
+      "peak_to_peak": 0.08768987655639648,
+      "deviation_stdev": 0.018658805156269352
+    }
+  },
+  "time_bins": {
+    "0": {
+      "pitch": {
+        "n": 281,
+        "mean": 74.54390553647514,
+        "min": 74.53034210205078,
+        "max": 74.55641174316406,
+        "peak_to_peak": 0.02606964111328125,
+        "stdev": 0.004415284272753654,
+        "max_abs_deviation_from_mean": 0.013563434424355592
+      },
+      "slope": {
+        "n": 281,
+        "mean": 74.59047544214648,
+        "min": 74.57644653320312,
+        "max": 74.602783203125,
+        "peak_to_peak": 0.026336669921875,
+        "stdev": 0.004407357473082478,
+        "max_abs_deviation_from_mean": 0.014028908943359397
+      },
+      "temperature": {
+        "n": 281,
+        "mean": 23.409252669039144,
+        "min": 23.0,
+        "max": 24.0,
+        "peak_to_peak": 1.0,
+        "stdev": 0.4916959649249536,
+        "max_abs_deviation_from_mean": 0.5907473309608555
+      },
+      "magnitude": {
+        "n": 281,
+        "mean": 10.043028471732903,
+        "min": 9.976902961730957,
+        "max": 10.078125,
+        "peak_to_peak": 0.10122203826904297,
+        "stdev": 0.010116346216877457,
+        "max_abs_deviation_from_mean": 0.066125510001946
+      },
+      "noise": {
+        "n": 281,
+        "mean": 0.018113310534997554,
+        "min": 0.014595639891922474,
+        "max": 0.030164776369929314,
+        "peak_to_peak": 0.01556913647800684,
+        "stdev": 0.004118327723807888,
+        "max_abs_deviation_from_mean": 0.01205146583493176
+      },
+      "drift": {
+        "n": 281,
+        "mean": 0.013434107617551322,
+        "min": 0.0,
+        "max": 0.044234659522771835,
+        "peak_to_peak": 0.044234659522771835,
+        "stdev": 0.013883840025133029,
+        "max_abs_deviation_from_mean": 0.030800551905220512
+      },
+      "recovery_s": null,
+      "roll": {
+        "n": 281,
+        "circular_mean": -4.394482223867285,
+        "peak_to_peak": 0.08768987655639648,
+        "deviation_stdev": 0.018658805156269352
+      }
+    }
+  },
+  "static_bin_mean_range_deg": null,
+  "marked_returns": {},
+  "marked_slope_mean_range_deg": null,
+  "marked_slope_max_deviation_from_first_deg": null,
+  "automatic_stability_episodes": {
+    "1": {
+      "pitch": {
+        "n": 281,
+        "mean": 74.54390553647514,
+        "min": 74.53034210205078,
+        "max": 74.55641174316406,
+        "peak_to_peak": 0.02606964111328125,
+        "stdev": 0.004415284272753654,
+        "max_abs_deviation_from_mean": 0.013563434424355592
+      },
+      "slope": {
+        "n": 281,
+        "mean": 74.59047544214648,
+        "min": 74.57644653320312,
+        "max": 74.602783203125,
+        "peak_to_peak": 0.026336669921875,
+        "stdev": 0.004407357473082478,
+        "max_abs_deviation_from_mean": 0.014028908943359397
+      },
+      "temperature": {
+        "n": 281,
+        "mean": 23.409252669039144,
+        "min": 23.0,
+        "max": 24.0,
+        "peak_to_peak": 1.0,
+        "stdev": 0.4916959649249536,
+        "max_abs_deviation_from_mean": 0.5907473309608555
+      },
+      "magnitude": {
+        "n": 281,
+        "mean": 10.043028471732903,
+        "min": 9.976902961730957,
+        "max": 10.078125,
+        "peak_to_peak": 0.10122203826904297,
+        "stdev": 0.010116346216877457,
+        "max_abs_deviation_from_mean": 0.066125510001946
+      },
+      "noise": {
+        "n": 281,
+        "mean": 0.018113310534997554,
+        "min": 0.014595639891922474,
+        "max": 0.030164776369929314,
+        "peak_to_peak": 0.01556913647800684,
+        "stdev": 0.004118327723807888,
+        "max_abs_deviation_from_mean": 0.01205146583493176
+      },
+      "drift": {
+        "n": 281,
+        "mean": 0.013434107617551322,
+        "min": 0.0,
+        "max": 0.044234659522771835,
+        "peak_to_peak": 0.044234659522771835,
+        "stdev": 0.013883840025133029,
+        "max_abs_deviation_from_mean": 0.030800551905220512
+      },
+      "recovery_s": null,
+      "roll": {
+        "n": 281,
+        "circular_mean": -4.394482223867285,
+        "peak_to_peak": 0.08768987655639648,
+        "deviation_stdev": 0.018658805156269352
+      }
+    }
+  },
+  "recovery_seconds_by_episode": {}
+}

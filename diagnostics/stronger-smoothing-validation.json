@@ -1,0 +1,14 @@
+{
+  "synthetic": {
+    "noise_sd_ratio": 0.18496826260500748,
+    "synthetic_noise_reduction_percent": 81.50317373949925,
+    "step_30deg_settle_s": 0.5,
+    "slow_ramp_final_deg": 0.8577060058537044
+  },
+  "recorded_data": {
+    "before_sd_deg": 0.015141737813474328,
+    "after_sd_deg": 0.009241555921774829,
+    "samples": 219,
+    "note": "Same recorded stable segment replay; noise comparison only, not absolute accuracy."
+  }
+}

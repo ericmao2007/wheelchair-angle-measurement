@@ -1,0 +1,15 @@
+{
+  "valid": 171,
+  "has_gyro": 171,
+  "has_fusion": 171,
+  "saved": 171,
+  "frames": 171,
+  "sensor_modes": [
+    "5"
+  ],
+  "sensor_errors": [
+    "0"
+  ],
+  "duration_s": 18.178683457896113,
+  "note": "Live protocol/health check only; stationary fixture, dynamic accuracy, long-term drift and repeatability were not controlled."
+}

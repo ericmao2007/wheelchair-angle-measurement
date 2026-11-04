@@ -1,0 +1,31 @@
+{
+  "base64": "AQEAAEDiAQAAAIA+AACgPwAAEEAAAFBAAACIQAAAqEAAAMhAAADoQAAABEEAABRBAAAkQQAANEEAAERBAABUQQAAZEEAAHRBAACCQQAAikEAAJJBAACaQQAAokEAAKpBAACyQQAAukEAAMJBAADKQQAA0kEAANpBAADiQQAA6kH7PQU/BQYABQ==",
+  "sequence": 257,
+  "uptime_ms": 123456,
+  "corrected": [
+    3.25,
+    4.25,
+    5.25
+  ],
+  "fusion_accel": [
+    6.25,
+    7.25,
+    8.25
+  ],
+  "gyro": [
+    9.25,
+    10.25,
+    11.25
+  ],
+  "bias": [
+    24.25,
+    25.25,
+    26.25
+  ],
+  "scale": [
+    27.25,
+    28.25,
+    29.25
+  ],
+  "temperature": -5
+}
