@@ -1,195 +1,237 @@
-# v1.5：一位小数 / 延长平均（2026-10-30）
+# Wheelchair Angle Measurement
 
-Android 角度/Grade 显示改为一位小数，内部精度保留。BNO086 静止显示增加 1.5 秒滚动向量平均，运动时绕过长窗。对向测量、GPS 稳定采样和 ESP32 稳定窗口从 3 秒改为 5 秒。校准逻辑保留。详见 [App 说明](android-app/README.md)。App 更新与固件烧录分别生效，当前构建不能代替实机漂移排查。
+An ESP32 and BNO086 project for measuring wheelchair tilt and slope, with Bluetooth Low Energy (BLE), an Android app, and a laptop browser viewer.
 
----
+The current firmware uses the BNO086's internal six-axis fusion. The sections below describe current operation first, followed by historical BNO055 implementation notes. Historical register settings, wiring, and operating modes do not apply to the current BNO086 firmware.
 
-# App v1.4：对向测量估计 Pitch 零偏（2026-10-30）
+## Current release: v1.5 (2026-10-30)
 
-Android App 新增 **180° reversal zero · Pitch**。在同一坡面、同一贴地面和相同接触位置，朝下/朝上各采集至少 3 秒稳定六轴角度，计算 `零偏=(角度1+角度2)/2`、`坡度=|角度1-角度2|/2`，确认后修正 Pitch、Grade、3D 和新 GPS 记录。原有 IMU 校准与显示滤波保留，固件无需更新。详情见 [Android 使用说明](android-app/README.md)。
+Android angle and grade values display one decimal place while retaining internal precision. The BNO086 display adds a 1.5-second rolling vector average when stationary and bypasses the long window during motion. Reversal measurements, GPS stable sampling, and the ESP32 stability window now use five seconds instead of three. Calibration behavior is retained.
 
-零偏按本次连接生效；断线、传感器重启或校准变化需重做。六轴无航向，需人工确保沿坡面调头 180°，不能上下翻面。此功能估计纵向零偏，不修正比例误差、任意安装旋转或横向 Roll。主界面增加校准保存记录和滤波链路状态。
+See the [Android app instructions](android-app/README.md). Updating the app and flashing the firmware are separate steps. Successful builds do not replace physical drift testing.
 
----
+### Pitch offset from a 180° reversal: v1.4 (2026-10-30)
 
-# BNO086 内置六轴融合修正（2026-10-28）
+The Android app includes **180° reversal zero · Pitch**. On the same slope, keep the same contact face and contact location, and take stable six-axis measurements facing downhill and uphill. Version 1.4 required at least three seconds per direction; v1.5 increases this to five seconds.
 
-本节替代下文旧的自写 TiltFusion 路径。主姿态使用 `SH2_GAME_ROTATION_VECTOR`（100 Hz 请求），由 BNO086 内部融合三轴加速度和三轴陀螺仪，不启用磁力计。归一化四元数投影世界 +Z 到传感器坐标得到重力方向，再应用 AXES 安装映射；不会对四元数欧拉角再做陀螺积分。加速度、已校准陀螺仪仍以 50 Hz 请求用于运动/校准诊断；gyro 的 rad/s 转 °/s 保留。I²C 改为 400 kHz，接线不变。报告过期 120 ms 时读数无效。
+```text
+zero offset = (angle1 + angle2) / 2
+slope magnitude = abs(angle1 - angle2) / 2
+```
 
-BLE 发送和 Android v1.3 刷新均为名义 20 Hz；芯片内部融合报告请求为 100 Hz。App 在芯片融合模式跳过旧 0.5 s 短窗及随机游走卡尔曼：静止时三帧中值抑制孤立尖峰，再用时间常数 0.20 s 的低通；gyro 大于 1°/s 时绕过中值，改为 0.035 s 低通。无死区、无锁定上次角度；不会把平滑等同于绝对精度。
+After confirmation, the correction applies to Pitch, Grade, the 3D view, and new GPS records. Existing IMU calibration and display filtering remain available; this app feature does not require a firmware update.
 
-在新版 App 的 Calibration 中点击 Start IMU calibration：先静置几秒，再在 4–6 个不同姿态各保持几秒，最后静置于稳固支撑。Accel/Gyro 均为 High 且稳定窗口通过后，Save IMU calibration 才可点击；保存到芯片 DCD。正常测量启用陀螺仪动态校准；加速度动态校准只在显式校准期间开启，成功保存后关闭。不能把开机时任意姿态自动设成水平。Set zero 仅作相对零点。
+The offset lasts for the current connection. Repeat the procedure after disconnection, a sensor restart, or a calibration change. Six-axis sensing provides no heading, so manually turn the device 180° along the slope without flipping it upside down. This estimates longitudinal zero offset; it does not correct scale error, arbitrary mounting rotation, or lateral Roll. The main screen also shows saved calibration records and filter status.
 
-原六面 NVS 系数仍用于诊断加速度，不会应用到芯片融合四元数；新版 App 在 mode=6 时提供真正的芯片校准，隐藏旧六面入口。flags bit64 表示芯片校准中、bit128 表示有本固件保存 DCD 的记录（不代表当前精度已达 High）；mode=6 表示芯片 Game Rotation Vector。status 低两位为融合质量，中间两位为加速度质量，接下来两位为 gyro 质量，均为 0 Unreliable / 1 Low / 2 Medium / 3 High。error=1 表示报告失效。metadata 后缀为 `:SH2`。
+## Current hardware: ESP32 + BNO086
 
-姿态转换、App 映射/校准指令/运动跟随及数据中断测试通过，固件和 APK 编译与 lint 通过。真实归位误差仍需同一夹具和参考角对比；这些测试不能证明绝对精度。
+The firmware uses Adafruit BNO08x 1.2.5 and its SH-2/SHTP report interface. It does not access BNO055 registers.
 
-依据：[CEVA BNO08X 数据手册 §2.2.2](https://www.ceva-ip.com/wp-content/uploads/BNO080_085-Datasheet.pdf)、[SH-2 校准 API](https://github.com/adafruit/Adafruit_BNO08x/blob/master/src/sh2.h)。
+### Wiring
 
----
+Disconnect power before wiring and follow the actual module labels. This table applies to a 3.3 V BNO086 breakout with supporting power circuitry, rather than the bare chip.
 
-# 当前硬件：ESP32 + BNO086（2026-10-28）
-
-固件现使用 Adafruit BNO08x 1.2.5 的 SH-2/SHTP 报告接口，不再访问 BNO055 寄存器。以 20,000 µs 周期订阅包含重力的 `SH2_ACCELEROMETER`（m/s²）及 `SH2_GYROSCOPE_CALIBRATED`（rad/s，固件转换为 °/s）。这里 raw 指应用六面校准前的加速度报告，不是 ADC 原始计数。仍运行 ESP32 上的 TiltFusion；未采用芯片内置 rotation vector。磁力计未订阅。
-
-## BNO086 接线（当前 esp32dev 配置）
-
-先断电，按模块实际丝印连接；下表适用于带供电外围电路的 3.3 V BNO086 breakout，不是裸芯片引脚表。
-
-| BNO086 模块 | ESP32 |
+| BNO086 module | ESP32 |
 |---|---|
 | 3V3 / 3.3V | 3V3 |
 | GND | GND |
 | SDA | GPIO21 |
 | SCL | GPIO22 |
 | RST / NRST | GPIO19 |
-| INT | 此 I²C 驱动使用轮询，无需连接 |
+| INT | Not required; this I²C driver polls the sensor |
 
-模块应设置为 I²C：PS0=0、PS1=0。SparkFun Qwiic 模块默认如此，无需改焊；其他模块按其原理图配置。BOOT 保持模块默认高电平，不能拉低进入 bootloader。SA0/ADR 选择地址，固件自动尝试 0x4B 和 0x4A。保持 SDA/SCL 上拉到 3.3 V；SparkFun 模块已有上拉。不要给信号引脚接 5 V。只有 VIN 丝印的其他型号模块，需先核对其供电说明，不能假定 VIN 等同 3V3。
+Configure the module for I²C: PS0=0 and PS1=0. SparkFun Qwiic modules use this by default; check the schematic for other modules. Leave BOOT at its default high level to avoid entering the bootloader. SA0/ADR selects the address; the firmware tries 0x4B and 0x4A.
 
-默认 I²C 100 kHz。GPIO 可在 platformio.ini 修改；若模块未引出 RST，可将 BNO_RESET 改为 -1 使用软件复位，但建议接上复位线。BNO08x 的 I²C 时序较敏感，短线共地；实机若反复掉线，需要排查接线/上拉，必要时另改 SPI。
+SDA and SCL need pull-ups to 3.3 V. SparkFun modules already include them. Do not connect signal pins to 5 V. For a module labeled only VIN, check its supply requirements before connecting it; VIN may differ from 3V3.
 
-## 烧录与检查
+Current I²C speed is 400 kHz. GPIO settings are in [platformio.ini](platformio.ini). If RST is unavailable, set `BNO_RESET` to `-1` for software reset, although a reset wire is recommended. Use short wires and a shared ground. Repeated disconnections require checking wiring and pull-ups; SPI may be an alternative if needed.
+
+### Build, flash, and monitor
+
+With PlatformIO installed and `pio` on your PATH:
 
 ```sh
-/Users/ericmao/.platformio/penv/bin/pio run
-/Users/ericmao/.platformio/penv/bin/pio run --target upload
-/Users/ericmao/.platformio/penv/bin/pio device monitor --baud 115200
+pio run
+pio run --target upload
+pio device monitor --baud 115200
 ```
 
-启动日志应出现 `BNO086 init=1`，后续 `ok=1`。设备名仍为 MAO_SLOPE，网页及 BLE UUID 不变。metadata 为 `STATIC2:ACCGYRO:FUSION6:BNO086`。报告间断超过 120 ms 撤下有效读数，持续缺失会重新初始化；芯片报告复位后重新订阅。
+On the original development machine, the executable is `/Users/ericmao/.platformio/penv/bin/pio`. Add `--upload-port <port>` if automatic port detection fails.
 
-换传感器后必须重新六面校准。BNO086 使用独立 NVS namespace `bno086-static`、key `sixaxis-v1`，不会套用旧 BNO055 的系数。模块坐标按新板的 X/Y/Z 丝印确认，安装变更可调整 include/inclinometer.h 的 AXES。
+Startup should print `BNO086 init=1`, followed by `ok=1` during operation. The BLE device name is `MAO_SLOPE`; service UUIDs remain unchanged. Reports older than 120 ms invalidate the reading. Prolonged report loss triggers reinitialization, and sensor resets trigger report resubscription.
 
-保留 136-byte STATIC2 格式。mode=5 是应用六轴兼容标签；status=6/error=0 表示有效报告，status=0/error=1 表示报告缺失，不再代表 BNO055 的硬件寄存器。当前不读取温度，temperature=-128 表示不可用，Python bridge 解码为 null。ESP32 编译通过；实机通信、校准及动态精度尚未验证。
+Confirm the module's X/Y/Z markings when mounting it. Adjust `AXES` in [include/inclinometer.h](include/inclinometer.h) when the mounting changes. BNO086 diagnostic six-face coefficients use NVS namespace `bno086-static`, key `sixaxis-v1`, separately from old BNO055 coefficients.
 
-参考：[Adafruit BNO08x 驱动](https://github.com/adafruit/Adafruit_BNO08x)、[SparkFun BNO086 硬件说明](https://docs.sparkfun.com/SparkFun_VR_IMU_Breakout_BNO086_QWIIC/hardware_overview/)。
+### Internal six-axis fusion (2026-10-28)
 
----
+The main orientation comes from `SH2_GAME_ROTATION_VECTOR`, requested at 100 Hz. The BNO086 fuses three-axis acceleration and three-axis gyroscope measurements internally; the magnetometer is disabled. A normalized quaternion projects world +Z into sensor coordinates to obtain the gravity direction, then applies the `AXES` mounting map. Euler angles derived from that quaternion are not integrated again with the gyroscope.
 
-以下为 BNO055 历史记录，其中寄存器、接线、温度及模式配置不适用于当前 BNO086 固件；通用测量、网页和六面校准说明供参考，冲突以本文顶部为准。
+`SH2_ACCELEROMETER` and `SH2_GYROSCOPE_CALIBRATED` reports are requested at 50 Hz for motion and calibration diagnostics. Acceleration includes gravity and uses m/s²; gyroscope reports are converted from rad/s to °/s. Here, “raw” means before application of the diagnostic six-face correction, rather than raw ADC counts.
 
-# 当前版本：六轴实时倾角仪（2026-10-21）
+BLE transmission and Android v1.3 display updates run at a nominal 20 Hz. In chip fusion mode, the app bypasses the older 0.5-second window and random-walk Kalman filter. A three-frame median rejects isolated stationary spikes, followed by a low-pass filter with a 0.20-second time constant. Above 1°/s, the median is bypassed and the low-pass time constant becomes 0.035 seconds. Version 1.5 adds the stationary rolling average described above. There is no dead zone or last-angle lock. Smoother output does not establish absolute accuracy.
 
-默认模式已改为 **ACCGYRO**：三轴加速度 + 三轴陀螺仪。ESP32 在名义 50 Hz 运行 TiltFusion 六轴互补倾角观测器：陀螺仪预测重力方向，加速度反馈约束倾角漂移并估计可观测的陀螺仪偏置。磁力计未启用，无绝对航向。陀螺仪配置 ±2000°/s、23 Hz 带宽、normal power。六面校准仍作用于加速度，保存在原 NVS 中。
+### IMU calibration
 
-网页继续使用中值/短窗平均/自适应卡尔曼进行显示平滑；有明显角速度时绕过慢速短窗并提高增益。主界面保持简洁，显示角度、Grade、Roll/Pitch、3D 和归零；已有轴对调和正负反转保留。连接状态 **Live · 6-axis** 仅在收到真实的有效融合帧时出现。
+1. In the updated Android app, open Calibration and select **Start IMU calibration**.
+2. Keep the device still for a few seconds, then hold it in four to six different orientations for a few seconds each.
+3. Finish with the device resting on a stable support.
+4. When both Accel and Gyro quality are High and the stability window passes, select **Save IMU calibration** to save the chip's DCD calibration.
 
-BLE 保持 136-byte STATIC2 外形和 0xA6 分片。新增 flags bit 32 表示原 filtered 三轴槽为融合重力向量（m/s²）；metadata 为 STATIC2:ACCGYRO:FUSION6。bridge 将其明确解码为 fusion_accel，并把 filtered_accel 留空，避免把融合结果冒充原加速度低通。旧协议仍可读取，未带融合标记时回退加速度显示。CSV 新增 has_gyro、has_fusion 和 fusion_accel 三轴字段。
+Dynamic gyro calibration stays enabled during normal measurement. Dynamic accelerometer calibration is enabled only during explicit calibration and is disabled after a successful save. Startup does not automatically treat the current position as horizontal. **Set zero** establishes only a relative reference.
 
-验证：tests/tilt_fusion_test.cpp 覆盖转动方向、偏置、翻转/断流/重启恢复；tests/test_static_protocol.py 覆盖融合字段；tests/live_filter_test.js 覆盖显示平滑与陀螺仪辅助跟随。六轴融合不能消除持续平移加速度、安装误差和温漂；真实动态精度、长期漂移及归位重复性仍需受控实验。下文为此前静态方案的详细参考，遇到模式、融合和显示行为冲突时以本节为准。
+Legacy six-face NVS coefficients still apply to diagnostic acceleration, but never to the chip fusion quaternion. In `mode=6`, the Android app provides chip calibration and hides the legacy six-face controls.
 
----
+### Protocol and status
 
-# ESP32 + BNO055 静态重力倾角仪
+The 136-byte STATIC2 format is retained. Current chip fusion uses `mode=6`, and metadata ends with `:SH2`. The preceding BNO086 application-fusion implementation used `mode=5` and metadata `STATIC2:ACCGYRO:FUSION6:BNO086`; its fixed status values should not be interpreted as current calibration quality.
 
-主测量在 ESP32 上完成：读取 **包含重力的加速度寄存器**，校正三轴零偏/比例，映射到设备坐标，对三轴向量低通并做稳定窗口平均，最后计算倾角。没有融合欧拉角、融合 gravity、linear acceleration 或陀螺仪积分进入主测角。旧 Kalman/filter 文件仅保留为历史测试，不参与新固件。
+| Field | Meaning in chip fusion mode |
+|---|---|
+| flags mask 64 | Chip calibration is active |
+| flags mask 128 | This firmware has a saved DCD record; this does not guarantee current High quality |
+| status bits 0–1 | Fusion quality |
+| status bits 2–3 | Accelerometer quality |
+| status bits 4–5 | Gyroscope quality |
+| error=1 | Report is invalid |
 
-默认 **ACCONLY（0x01）**。可将 `platformio.ini` 中 `BNO_MEASUREMENT_MODE` 改为 `OPERATION_MODE_ACCGYRO`（0x05），仍无姿态融合，只将 gyro 用于运动检测。ACCONLY 没有航向或陀螺仪静止判据。模式在启动及采样时校验；`SYS_STATUS=6` 表示无融合运行。系统检查 I²C 完整读数、单位寄存器、工作模式和传感器健康。失败帧不作为测量。
+Quality values are 0 Unreliable, 1 Low, 2 Medium, and 3 High. Temperature is unavailable: `temperature=-128`, decoded by the Python bridge as JSON `null`.
 
-## 接线与启动
+Orientation conversion, app mapping, calibration commands, motion following, and interrupted-data tests were recorded as passing, together with firmware/APK builds and lint. Physical return-position error still requires comparison using the same fixture and a reference angle; these checks do not establish absolute accuracy.
 
-BNO055 breakout 必须支持 3.3 V 供电/逻辑，按实际模块标签连接；默认 SDA→GPIO21、SCL→GPIO22、GND 共地，I²C 模式，短线，适当的 3.3 V 上拉。固件探测 0x28/0x29。断电后接线。
+References: [CEVA BNO08X datasheet, §2.2.2](https://www.ceva-ip.com/wp-content/uploads/BNO080_085-Datasheet.pdf), [SH-2 calibration API](https://github.com/adafruit/Adafruit_BNO08x/blob/master/src/sh2.h), [Adafruit BNO08x driver](https://github.com/adafruit/Adafruit_BNO08x), and [SparkFun BNO086 hardware guide](https://docs.sparkfun.com/SparkFun_VR_IMU_Breakout_BNO086_QWIIC/hardware_overview/).
+
+## Laptop viewer and logging
 
 ```sh
-/Users/ericmao/.platformio/penv/bin/pio run
-/Users/ericmao/.platformio/penv/bin/pio run --target upload --upload-port /dev/cu.usbserial-0001
 python3 -m venv .venv
 .venv/bin/python -m pip install -r laptop/requirements.txt
 .venv/bin/python laptop/viewer.py --csv diagnostics/measurement-01.csv
 ```
 
-打开 http://127.0.0.1:8765；设备名 MAO_SLOPE。macOS 为终端/编辑器开启蓝牙权限。只运行一个 BLE bridge。`--no-browser`、`--port 8766` 可用。`--demo` 为明确标注的模拟数据，不能验证传感器。
+Open http://127.0.0.1:8765 and connect to `MAO_SLOPE`. On macOS, grant Bluetooth access to the terminal or editor. Run only one BLE bridge at a time. Options include `--no-browser`, `--port 8766`, and `--demo`. Demo data is explicitly simulated and cannot validate the sensor.
 
-界面显示原始/校正/低通/稳定均值加速度、|a|、窗口噪声及方向变化、温度、校准系数、角度及坡度百分比。网页在移动中使用校正加速度持续更新 3D、roll/pitch 和坡度，标为“实时估计”；主角度与 3D 始终采用最新校正加速度，无论运动或静止都不切换为稳定窗口平均；稳定窗口仅用于诊断、校准和历史结果。实时估计不需要等待停稳，但平移加速度/振动会影响角度，不代表动态姿态精度已验证。数据故障、过期或六面采样时撤下当前结果；历史稳定值带“上次有效测量”与时间。没有航向显示。初次未校准可以观察原始表现，但标为未校准估计。
+The viewer provides angle, grade, Roll/Pitch, a 3D view, relative zeroing, and diagnostic data. Translation and vibration can affect estimates during motion. Invalid, stale, or calibration-sampling data withdraws the current result; historical stable readings are labeled with their time. Uncalibrated readings are estimates. Heading is not measured.
 
-## 测量管线与配置
+## Diagnostics and validation
 
-`src/main.cpp` 直接读取 page 0 `ACC_DATA 0x08..0x0D`，单位 `m/s²`（100 LSB/(m/s²)）；ACCGYRO 时读取 `GYR_DATA 0x14..0x19`，单位 `deg/s`（16 LSB/(deg/s)）。明确设置 `UNIT_SEL=0`，identity axis map。page 1 设置加速度 ±2g、31.25 Hz 带宽、normal power，然后恢复 page 0。主采样名义 50 Hz，BLE 名义 10 Hz；实际频率取决于 I²C/BLE 调度。
+CSV logging requires a new destination path to avoid overwriting earlier sessions. Ctrl+C closes and flushes the log. A neighboring `.meta.json` file records units, simulation status, and analysis limitations. Firmware serial output at 115200 baud reports status, vector magnitude, window noise/direction change, angles, temperature availability, and health; calibration commands also report results.
 
-集中参数在 [include/inclinometer.h](include/inclinometer.h) 的 `Config`：
+For a **10–30 minute stationary test**, secure the device to a repeatable base in one orientation, avoid zeroing during the test, and record temperature changes where available. One logging session records continuously. Report per-minute stable means, within-window fluctuation, and peak-to-peak variation separately. Changes caused by lifting and replacing the device should not be counted as stationary drift.
 
-| 参数 | 默认 | 含义 |
-|---|---:|---|
-| lowpassSeconds | 0.35 s | 三轴向量一阶低通，设 0 禁用 |
-| stableSeconds | 3 s | 连续稳定窗口，建议 2–5 s |
-| settleSeconds | 1 s | 运动/不稳定后重新等待 |
-| maxGap | 0.12 s | 超时清空窗口 |
-| normTolerance | 0.8 m/s² | 与 9.80665 的差；为未校准观察保留余量 |
-| noiseLimit | 0.08 m/s² | 窗口校正向量相对均值的 RMS |
-| driftLimit | 0.08° | 窗口首末各 1/3 均值方向夹角 |
-| accelStep | 0.25 m/s² | 相邻校正向量突变 |
-| gyroInstant | 5°/s | 可用时的瞬时角速度门限 |
-| gyroMean / gyroRms | 0.3 / 1.5°/s | 可用时的窗口角速度门限 |
+For **repeated return-position tests**, mark `moving` before lifting the device, then mark `return-1` after replacing it on the same base in the same direction. Wait until stable and hold for about 10–20 seconds. Repeat with `moving`, `return-2`, and so on. Each marker is applied to the next received frame and remains active until the next marker. Name each physical return manually; a stable segment interrupted by noise is not necessarily a physical lift.
 
-环形缓冲 260 个样本，支持名义 50 Hz 下 2–5 s 窗口。采样间断、运动或不稳定会丢弃整窗，重置低通，等待后从当前位置重新收集，避免带入前次移动尾迹。只平均向量，不平均欧拉角，不锁定上次角度，不自动扣除归位差。噪声窗口重叠且低通样本相关；窗口波动/方向变化不是绝对精度或置信区间。模长接近 1g 只是多个条件之一；持续加速度、极慢运动仍可能通过静止判据。
-
-## 六面校准与 NVS
-
-1. 让设备温度稳定，使用可重复、平整且互相垂直的六面支撑。传感器本体必须固定，避免导线拉动。
-2. 点击“开始新的六面采样”。此时只用原始传感器数据收集，暂不应用旧六面系数；主正式测量暂停。
-3. 分别让**传感器坐标** +X、−X、+Y、−Y、+Z、−Z 朝上。每面停稳，界面到“稳定测量”后点击对应按钮。方向错误或窗口未稳定会拒绝采样。
-4. 六面全采后点击保存。每轴 `bias=(plus+minus)/2`，`scale=2g/(plus-minus)`；应用 `corrected=(raw-bias)*scale`。只使用对应轴正负两个面的均值，估计三轴零偏和对角比例。
-5. 保存至 ESP32 NVS namespace `bno-static`、key `sixaxis-v1`。检查 UI 校准状态/系数，重启后应恢复；不依赖 BNO055 融合校准的 0–3 等级，不将旧 `bno-slope/offsets` 融合 profile 导入本管线。清除按钮只清除此六面 profile。
-6. 保存前系数范围/完整性不符会拒绝；保存失败不会替换当前有效校准。旧校准在取消新采样后继续使用。
-
-六面校准不能完整修正轴不正交、任意安装旋转、温度系数或支撑面误差。未用参考夹具确认的“六面”不保证 ±0.1°。
-
-## 角度、平面与相对零点
-
-设备坐标默认等于传感器坐标。`AXES={1,2,3}` 可改为带符号的轴排列，应保持右手坐标。先在传感器坐标应用校准，再映射到设备坐标。XY 是测量平面，+Z 为正面法向。
-
-对稳定平均向量 `(x,y,z)`：
-
-- roll = `atan2(y,z)`，[-180°,180°]，正值表示 +Y 抬高；倒置时接近 ±180°。
-- pitch = `atan2(-x,hypot(y,z))`，[-90°,90°]，正值表示 −X 抬高。
-- 平面总倾角 = `atan2(hypot(x,y),abs(z))`，[0°,90°]；倒置水平仍是 0°，UI 另标注正面向下。
-- X/Y 坡度 = `100*x/hypot(y,z)` / `100*y/hypot(x,z)`，正号表示沿设备正轴上升。
-- 总坡度百分比 = `100*hypot(x,y)/abs(z)` = `100*tan(总倾角)`；竖直无有限值。
-
-图形从重力方向重建倾斜示意，航向未测量，不赋予绝对 heading 含义。
-
-“相对归零”只记录当前重力方向，另外显示两方向夹角 [0°,180°]；不会更改上方绝对结果、传感器系数或 NVS。页面重载清除相对零点；开机绝不把当前坡度自动设为水平。
-
-## 长时静置与翻转归位诊断
-
-启动 `--csv` 后持续写 CSV，目标文件必须是新路径（防止覆盖旧日志），Ctrl+C 会关闭/flush；旁边 `.meta.json` 记录单位、模拟标志和分析边界。固件串口 115200 每秒输出状态、模长、窗口噪声/方向变化、角度、温度、health；校准命令输出结果。
-
-**静置 10–30 分钟：**固定于不变的定位底座，保持同一姿态，不操作归零；记录温度变化。启动一次会话即可连续写入，不需人工保持脚本轮询。每分钟稳定均值的变化、窗内波动、整段稳定结果的峰峰值分别报告。不要把拿起/放回的不同姿态混到“静态漂移”里。
-
-**反复翻转后归位：**离开底座前在页面记录 `moving`，放回同一底座、同一方向后记录 `return-1`，等待稳定并保持约 10–20 秒；重复 `moving` / `return-2` 等。标记按收到的下一帧落盘，并持续归组到下一个标记。标记及稳定片段编号用于分析，片段被噪声打断不等于一次真实拿起；每次归位必须人工命名。比较各 return 的稳定均值、相对首次最大差、均值范围、短期 SD、恢复时间和温度。恢复时间从接收端第一次无效结果到恢复稳定计时，含连接/校准等待，并非真实机械落座时刻的精确测量。
+Compare stable return means, maximum difference from the first return, mean range, short-term standard deviation, recovery time, and available temperature. Recovery time runs from the receiver's first invalid result until stability returns, including connection/calibration delays; it does not precisely measure mechanical placement time.
 
 ```sh
 .venv/bin/python laptop/analyze_log.py diagnostics/static-session.csv --output diagnostics/report.json
 ```
 
-报告包含每分钟统计、人工归位组、自动稳定片段及恢复时间；roll 使用圆周均值/包裹偏差，避免 ±180° 分支平均错误。没有外部参考仪器时 `absolute_error` 始终为 NOT MEASURED。统计只描述噪声、时间变化和重复性；不把 Raw/Filtered 差或短期 SD 当成绝对误差。温度是 BNO055 内部读数，非校准环境温度。
+Reports include per-minute statistics, manually marked return groups, automatic stable segments, and recovery time. Roll uses circular means and wrapped deviations to handle the ±180° boundary. Without an external reference, `absolute_error` remains `NOT MEASURED`. Raw/filtered differences and short-term standard deviation do not measure absolute error. Historical BNO055 temperature readings are internal sensor readings, rather than calibrated ambient temperatures.
 
-## 协议与检查
-
-保留服务/notify/control/metadata UUID。新 metadata 为 `STATIC2:ACCONLY` / `STATIC2:ACCGYRO`。STATIC2 是 136-byte little-endian `<II15f9f6fb7B`：序号/uptime；raw/corrected/filtered/gyro/mean 五个三轴向量；模长/噪声/方向变化/roll/pitch/slope/gradeX/gradeY/grade；bias/scale；温度；flags/state/faces/mode/status/error/calResult。无效角度为 NaN，由 bridge 转 JSON null。flags：1读数有效、2校准采样中、4有NVS校准、8有gyro、16稳定。每包 `[0xA6,seqLow,index,count]` + 最多16字节，9片。bridge 检查长度/顺序/版本/超时，不拼接跨帧；旧 0xA5 协议仍可解码诊断，但不显示为正式静态测量。
-
-命令 `CALSTART`、`F0`..`F5`、`SAVE`、`CALCANCEL`、`CLEAR`。结果 1未稳定、2方向不符、3六面未齐/系数无效、4NVS失败、5成功、6取消、7清除。
+Existing validation commands:
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
 c++ -std=c++17 -Wall -Wextra -I include tests/inclinometer_test.cpp -o /tmp/prototype-inclinometer-test
 /tmp/prototype-inclinometer-test
-/Users/ericmao/.platformio/penv/bin/pio run
+pio run
 ```
 
-验证记录见 [diagnostics/VALIDATION.md](diagnostics/VALIDATION.md)。实机六面校准、长期漂移及归位重复性必须实际完成，不能用合成测试替代。
+See [diagnostics/VALIDATION.md](diagnostics/VALIDATION.md) for recorded results. Physical calibration, long-term drift, and return repeatability require real measurements; synthetic tests cannot replace them.
 
-驱动依据：[Bosch BNO055 数据手册](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bno055-ds000.pdf)、[Adafruit BNO055 驱动](https://github.com/adafruit/Adafruit_BNO055/blob/master/Adafruit_BNO055.cpp)。
+## Historical implementation notes
 
-## 连续网页滤波（2026-10-21）
+The following sections preserve the previous BNO055 behavior and development history. Current BNO086 instructions above take precedence.
 
-网页主角度、Grade 和 3D 使用三帧中值去尖峰、0.5 秒连续向量平均，再对三轴校正加速度进行自适应随机游走卡尔曼滤波。静止过程噪声已进一步降低；较大持续动作自动提高跟随增益，小变化持续跟随但存在平滑延迟。主数字现显示带正负的 Pitch（前后倾斜），Grade = 100 × tan(Pitch)，与归零使用同一向量；正值显示 +，负值显示 −，Roll 在下方独立显示。每个 BLE 新帧仅更新一次，不随网页重绘重复滤波；静止时加强平滑，持续运动时提高跟随增益。不等待稳定窗口，不冻结零附近的小角度变化。这里不是陀螺仪姿态 EKF，ACCONLY 没有 gyro 数据用于预测。
+### ESP32 six-axis TiltFusion (2026-10-21)
 
-Set zero 使用当前滤波方向；随后角度、坡度、3D 和历史曲线采用相同相对坐标。清除零点恢复绝对显示，页面重载清除零点。校准状态或系数改变时重置滤波与相对零点，避免混用不同校准坐标；断流、设备重启及无效帧后重新初始化。原始 CSV 与固件稳定结果不受网页滤波影响。
+The default changed to **ACCGYRO**, combining three-axis acceleration and gyroscope data. ESP32 ran a six-axis complementary tilt observer at a nominal 50 Hz. Gyroscope prediction tracked gravity direction; accelerometer feedback constrained tilt drift and estimated observable gyro bias. The magnetometer was disabled, so absolute heading was unavailable. Gyroscope settings were ±2000°/s, 23 Hz bandwidth, and normal power. Six-face acceleration calibration remained in NVS.
 
-调参在 laptop/index.html 的 LiveVectorFilter。tests/live_filter_test.js 覆盖合成噪声、阶跃跟随、孤立尖峰、慢速转动与异常恢复。diagnostics/live-filter-validation.json 保存测试与已有稳定数据片段回放结果；这些检查不构成绝对精度、长期漂移或真实动态姿态验证。更强平滑会增加响应延迟，平移加速度和温漂仍可能产生角度偏差。
+The browser used median filtering, a short vector average, and adaptive Kalman display smoothing, bypassing the slow window and increasing gain during clear angular motion. Existing axis swaps and sign inversions were preserved. **Live · 6-axis** appeared only for valid fusion frames.
 
-网页 Roll / Pitch 已按反向安装需求互换；主数字显示互换后的 Pitch（原 Roll），Grade 同步按该方向计算。
+STATIC2 retained its 136-byte layout and 0xA6 fragmentation. Flags mask 32 identified the former filtered-vector slots as fused gravity in m/s². Metadata was `STATIC2:ACCGYRO:FUSION6`. The bridge decoded these slots as `fusion_accel` and left `filtered_accel` empty; older frames without the flag fell back to acceleration display. CSV added `has_gyro`, `has_fusion`, and three fusion-vector fields.
 
-界面角度、Grade 和 3D 每 500 ms 刷新一次（2 Hz）；后台仍逐帧处理 BLE 数据，ESP32 六轴融合采样不变。Set zero / Reset zero 立即更新显示。降低刷新频率不消除滤波收敛延迟。
+`tests/tilt_fusion_test.cpp` covers rotation direction, bias, flips, interrupted streams, and restart recovery. `tests/test_static_protocol.py` covers fusion fields; `tests/live_filter_test.js` covers smoothing and gyro-assisted tracking. Six-axis fusion cannot eliminate sustained translation, mounting error, or temperature drift.
+
+### Earlier BNO055 static gravity inclinometer
+
+This implementation read acceleration registers including gravity, corrected three-axis bias and scale, mapped device axes, low-pass filtered the vector, averaged a stable window, and calculated tilt. Fused Euler angles, fused gravity, linear acceleration, and gyro integration did not enter the main measurement. Old Kalman/filter files remained for historical tests.
+
+Default mode was **ACCONLY (0x01)**. Setting `BNO_MEASUREMENT_MODE` to `OPERATION_MODE_ACCGYRO` (0x05) added gyro motion detection without orientation fusion. ACCONLY had no heading or gyro stationary criterion. Modes were checked at startup and during sampling; `SYS_STATUS=6` meant non-fusion operation. I²C completeness, unit registers, operating mode, and sensor health were checked, and failed frames were rejected.
+
+A compatible 3.3 V BNO055 breakout used SDA→GPIO21, SCL→GPIO22, common ground, I²C mode, short wires, and suitable 3.3 V pull-ups. The firmware probed 0x28/0x29. Wiring was performed with power off.
+
+Page 0 `ACC_DATA 0x08..0x0D` used 100 LSB/(m/s²); ACCGYRO `GYR_DATA 0x14..0x19` used 16 LSB/(°/s). `UNIT_SEL=0` and an identity axis map were explicitly configured. Page 1 acceleration settings were ±2g, 31.25 Hz bandwidth, and normal power. Nominal sampling was 50 Hz and BLE was 10 Hz, subject to scheduling.
+
+Historical `Config` defaults in [include/inclinometer.h](include/inclinometer.h):
+
+| Parameter | Historical default | Meaning |
+|---|---:|---|
+| lowpassSeconds | 0.35 s | First-order vector low-pass; 0 disables it |
+| stableSeconds | 3 s | Continuous stability window; later increased to 5 s |
+| settleSeconds | 1 s | Wait after motion or instability |
+| maxGap | 0.12 s | Clear the window after a sampling gap |
+| normTolerance | 0.8 m/s² | Allowed deviation from 9.80665 m/s² |
+| noiseLimit | 0.08 m/s² | RMS corrected-vector deviation from the window mean |
+| driftLimit | 0.08° | Direction difference between means of the first/last window thirds |
+| accelStep | 0.25 m/s² | Adjacent corrected-vector jump limit |
+| gyroInstant | 5°/s | Instantaneous gyro limit, when available |
+| gyroMean / gyroRms | 0.3 / 1.5°/s | Window gyro limits, when available |
+
+A 260-sample ring buffer supported 2–5-second windows at nominal 50 Hz. Gaps, motion, or instability discarded the window, reset the low-pass filter, and restarted collection after settling. Only vectors were averaged. The system did not average Euler angles, lock the last angle, or automatically subtract return-position differences. Overlapping, correlated windows do not provide absolute accuracy or confidence intervals. A norm near 1g is only one condition; sustained acceleration or very slow motion may still pass.
+
+### Legacy six-face calibration and NVS
+
+1. Allow temperature to stabilize. Use a repeatable, flat fixture with six mutually perpendicular faces; secure the sensor and avoid wire tension.
+2. Start a new six-face capture. Collection uses raw readings without the old correction, and the main formal measurement pauses.
+3. Point sensor +X, −X, +Y, −Y, +Z, and −Z upward in turn. After the stable indication, capture the corresponding face. Incorrect direction or an unstable window is rejected.
+4. Save all six faces. For each axis, `bias=(plus+minus)/2`, `scale=2g/(plus-minus)`, and `corrected=(raw-bias)*scale`. Opposite-face means estimate bias and diagonal scale.
+5. BNO055 coefficients use NVS namespace `bno-static`, key `sixaxis-v1`. Check calibration status and coefficients after restart. This pipeline does not use BNO055 fusion quality levels or import the older `bno-slope/offsets` fusion profile. Clear removes only the six-face profile.
+6. Invalid coefficient ranges or incomplete data are rejected. Failed saves preserve the existing calibration, which also remains available after cancelling capture.
+
+This procedure cannot fully correct nonorthogonal axes, arbitrary mounting rotation, temperature effects, or fixture error. Six-face calibration without a verified reference fixture does not guarantee ±0.1°.
+
+### Angle definitions and relative zero
+
+Device coordinates default to sensor coordinates. `AXES={1,2,3}` accepts signed axis permutations and should remain right-handed. Calibration is applied in sensor coordinates before mapping to device coordinates. XY is the measurement plane; +Z is the front-face normal.
+
+For a stable mean vector `(x,y,z)`:
+
+| Quantity | Formula and range |
+|---|---|
+| Roll | `atan2(y,z)`, −180° to +180°; positive raises +Y |
+| Pitch | `atan2(-x,hypot(y,z))`, −90° to +90°; positive raises −X |
+| Total plane tilt | `atan2(hypot(x,y),abs(z))`, 0° to 90° |
+| X grade | `100*x/hypot(y,z)` |
+| Y grade | `100*y/hypot(x,z)` |
+| Total grade (%) | `100*hypot(x,y)/abs(z)` = `100*tan(total tilt)` |
+
+An inverted horizontal plane still has zero total tilt; the UI separately identifies its downward-facing front. Vertical total grade has no finite value. The graphic reconstructs tilt from gravity without absolute heading.
+
+The original relative-zero diagnostic stored the current gravity direction and displayed the angle between directions, 0°–180°, without changing absolute results, coefficients, or NVS. Reloading cleared it; startup never automatically declared the current slope horizontal. Later browser display zeroing is described below.
+
+### Legacy STATIC2 protocol
+
+Service, notify, control, and metadata UUIDs were preserved. Metadata was `STATIC2:ACCONLY` or `STATIC2:ACCGYRO`. The 136-byte little-endian structure is `<II15f9f6fb7B`:
+
+- Sequence and uptime.
+- Five three-axis vectors: raw, corrected, filtered, gyro, and mean.
+- Magnitude, noise, direction change, roll, pitch, slope, gradeX, gradeY, and total grade.
+- Three-axis bias and scale.
+- Temperature, flags, state, faces, mode, status, error, and calResult.
+
+Invalid angles use NaN, converted to JSON `null` by the bridge. Original flags masks were 1 valid, 2 calibration capture, 4 NVS calibration present, 8 gyro present, and 16 stable. Each fragment is `[0xA6,seqLow,index,count]` followed by up to 16 bytes, giving nine fragments. The bridge validates length, order, version, and timeout and never combines different frames. Older 0xA5 frames remain decodable for diagnostics but are not formal static measurements.
+
+Commands: `CALSTART`, `F0` through `F5`, `SAVE`, `CALCANCEL`, and `CLEAR`. Result codes: 1 unstable, 2 wrong direction, 3 incomplete faces/invalid coefficients, 4 NVS failure, 5 success, 6 cancelled, and 7 cleared.
+
+References: [Bosch BNO055 datasheet](https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bno055-ds000.pdf) and [Adafruit BNO055 driver](https://github.com/adafruit/Adafruit_BNO055/blob/master/Adafruit_BNO055.cpp).
+
+### Continuous browser filtering (2026-10-21)
+
+The browser angle, Grade, and 3D view used a three-frame median, a 0.5-second rolling vector average, and an adaptive random-walk Kalman filter on corrected acceleration. Lower stationary process noise increased smoothing; sustained motion increased gain. Small changes continued to track with filtering delay. Each new BLE frame updated the filter once, independently of rendering. This was not a gyro attitude EKF; ACCONLY supplied no gyro prediction.
+
+The main number became signed Pitch, with `Grade = 100 × tan(Pitch)` and Roll shown separately. Set zero captured the current filtered direction; angle, grade, 3D, and history then shared the same relative coordinates. Reset zero restored absolute display, and reload cleared the reference. Calibration changes reset filtering and zero to avoid mixing coordinate systems. Invalid frames, interrupted streams, and restarts caused reinitialization. Browser filtering did not alter raw CSV data or firmware stable results.
+
+`LiveVectorFilter` in `laptop/index.html` contains tuning parameters. `tests/live_filter_test.js` covers synthetic noise, step response, isolated spikes, slow rotation, and recovery. `diagnostics/live-filter-validation.json` records tests and stable-data replay results. These checks do not validate absolute accuracy, long-term drift, or real dynamic orientation accuracy. Stronger smoothing adds delay; translation and temperature drift can still bias angles.
+
+Browser Roll/Pitch were swapped for the reversed mounting, with the main Pitch value taken from the former Roll and Grade following the same direction. A later browser update rendered angle, Grade, and 3D every 500 ms (2 Hz), while background processing continued for each BLE frame. Set zero and Reset zero updated immediately. Lower rendering frequency does not remove filter settling delay.
